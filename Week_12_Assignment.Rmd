@@ -1,0 +1,114 @@
+---
+title: "Week_12_Assignment"
+author: "Sekhar Mekala"
+date: "Thursday, April 23, 2015"
+output: html_document
+---
+##Creating a JSON file to be inserted into a mongodb collection
+
+The following R code gets a JSON document from nytimes.com website, via API. This JSON document contains a books categories available at nytimes.com website
+
+###R Code to fetch books categories
+```{r}
+
+library(RCurl)
+library(jsonlite)
+
+url <- "http://api.nytimes.com/svc/books/v3/lists/names.json?api-key=ae3ebf8d2c14b1623769762cea332b83:0:71863562"
+
+web_data <- getURL(url)
+
+categories_df <- fromJSON(web_data)$results
+
+print(categories_df)
+
+```
+
+
+Let us convert back the data frame (categories_df) to a JSON document. In the following R code the JSON document is placed at "C:/Users/Sekhar/Documents/CUNY/MongoDB/books.json"
+
+
+```{r}
+
+categories_json <- toJSON(categories_df)
+fileconn <- file("C:/Users/Sekhar/Documents/CUNY/MongoDB/books.json")
+writeLines(categories_json, fileconn)
+close(fileconn)
+
+```
+
+##Using mongoimport to read the JSON file (books.json) to a mongodb collection
+
+The following code can be executed from the dos command prompt (depending on the directory where you install the mongodb. The idea is to use the mongoimport program to load the json file)
+
+"C:\Program Files (x86)\MongoDB 2.6 Standard\bin\mongoimport" --db nytimes --collection bookCategories --file "C:\Users\Sekhar\Documents\CUNY\MongoDB\books.json" --jsonArray
+
+The above command loads the json file (books.json) data to bookCategories collection (in mongodb's nytimes database)
+
+##Checking the contents of the collection 
+
+Execute the mongo.exe using the following command (the location of mongo.exe might change in your installation)
+
+"C:\Program Files (x86)\MongoDB 2.6 Standard\bin\mongo.exe"
+
+At the mongo.exe prompt, enter the following commands, to check the available collections:
+
+**use nytimes **
+
+**db.getCollectionNames()**
+
+The first command connects to nytimes database, and the second command displays the available collection names in the database. See the display below:
+
+![alt text](C:\Users\Sekhar\Desktop\fig1.png)
+
+The command **db.bookCategories.find().pretty().limit(5)** will display the first 5 documents of the collection **bookCategories**. See the below display (NOTE that the number of documents display is restricted to just 5, using the limit(5) option so that we are able to display the command along with the results in a single dos window. If you use **db.bookCategories.find().pretty()** command, then all the results of the collection are displayed:
+
+![alt text](C:\Users\Sekhar\Desktop\fig2.png)
+
+
+##Connecting to the local mongodb and reading a collection's documents to a R dataframe
+
+**NOTE** There is an excellent document on rmongodb usage at the website: http://cran.r-project.org/web/packages/rmongodb/vignettes/rmongodb_introduction.html
+
+Most of the commands I used below were taken from that website.
+
+```{r}
+#Install rmongodb package, if the package is not installed
+#install.packages("rmongodb")
+
+
+library(rmongodb)
+library(data.table)
+#Create a connection to the mongodb() process
+mongo <- mongo.create()
+
+#Get the collections we have in the "nytimes" database
+mongo.get.database.collections(mongo, "nytimes")
+
+
+#We will use the "bookCategories" collection name in "nytimes" database, to read its documents
+# Note how we referenced the collection name qualified with database name
+
+coll <- "nytimes.bookCategories"
+x <- mongo.find.all(mongo, coll)
+
+#Converting the collection's documents to a data frame in R
+books_df <- data.frame(rbindlist(lapply(x,as.list)))
+print(books_df)
+```
+
+
+The above code connects to mongodb, reads the documents of a collection present in nytimes database, and finally converts the documents to a R data frame.
+
+You may optionally execute the following R code to remove the _ID column from the data frame
+
+```{r}
+books_df[1] <- NULL
+
+head(books_df)
+
+```
+
+<span style="color:blue; font-family:Georgia; font-size:2em;">
+                                                         -~-End of Assignment-~- 
+</span>                                    
